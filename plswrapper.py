@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
 Run a PLS - Discriminant Analysis on a set of variables and target variables
-Romain Lafarguette, rlafarguette@imf.org
-Time-stamp: "2019-11-29 18:42:27 rlafarguette"
+Romain Lafarguette, https://romainlafarguette.github.io/
+Time-stamp: "2020-11-05 13:46:48 Romain"
 """
 
 ###############################################################################
