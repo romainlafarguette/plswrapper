@@ -2,7 +2,7 @@
 """
 Run a PLS - Discriminant Analysis on a set of variables and target variables
 Romain Lafarguette, https://romainlafarguette.github.io/
-Time-stamp: "2021-11-03 20:26:35 RLafarguette"
+Time-stamp: "2021-11-03 20:31:12 RLafarguette"
 """
 
 ###############################################################################
@@ -237,7 +237,7 @@ class PLS(object):
         plt.subplots_adjust(left=0.05, right=0.95,  wspace=0.3)
         
         return(fig)
-                  
+
 ###############################################################################
 #%% Example
 ###############################################################################
