@@ -2,18 +2,21 @@
 """
 Run a PLS - Discriminant Analysis on a set of variables and target variables
 Romain Lafarguette, https://romainlafarguette.github.io/
-Time-stamp: "2020-11-05 13:46:48 Romain"
+Time-stamp: "2021-11-03 20:04:58 RLafarguette"
 """
 
 ###############################################################################
 #%% Modules and methods
 ###############################################################################
-## Modules imports
+# Modules imports
 import pandas as pd                                     ## Data management
 import numpy as np                                      ## Numeric tools
 
-## Method imports
+import matplotlib.pyplot as plt
+
+# Method imports
 from sklearn.cross_decomposition import PLSRegression   ## PLS
+from sklearn.preprocessing import scale
 
 ###############################################################################
 #%% PLS Discriminant Analysis Class Wrapper
@@ -47,8 +50,12 @@ class PLS(object):
         self.reg_vars = reg_vars
         self.df = data.dropna(subset=self.dep_vars + self.reg_vars)
 
+        # Scale all the variables (important)
+        self.df = pd.DataFrame(scale(self.df.values), index=self.df.index,
+                               columns=self.df.columns)
+        
         ## Put parametrized regression as attribute for consistency
-        self.pls1 = PLSRegression(n_components=1, scale=True) # Always scale
+        self.pls1 = PLSRegression(n_components=1) 
 
         ## Unconstrained fit: consider all the variables 
         self.ufit = self.pls1.fit(self.df[self.reg_vars],
@@ -74,6 +81,7 @@ class PLS(object):
             self.component = self.component_unconstrained
             self.target = self.target_unconstrained
             self.summary = self.summary_unconstrained
+            self.loadings = self.summary['loadings'] # Have them directly
             
         elif num_vars > 0: ## Constrained model
             self.num_vars = int(num_vars)
@@ -156,37 +164,96 @@ class PLS(object):
         target_series = pd.Series(target.flatten(), index=self.df.index)
         return(target_series)
 
-    
-    #### Standard class methods (no "__")
-    def predict(self, dpred):
+    def predict(self, dcond=None):
         """ 
         Apply the dimension reduction learned on new predictors
         Input:
-            - dpred: Pandas frame with the predictors 
+            - dcond: Pandas frame with the conditioning frame. 
+            If none, use the in-sample prediction with the original data
 
         Output:
-            - Reduced dataframe using the same loadings as estimated in-sample
+            - The prediction
  
         """
+
+        # Extract the coefficients
+        beta = self.loadings
+
+        # Distinguish between in-sample and customized fit
+        if dcond==None: # The fit is done in-sample, using data input         
+            X = self.df[list(beta.index)]
+        else:
+            m = 'Conditioning frame should contain the predictors in columns'
+            assert all(x in dcond.columns for x in beta.index),m
+            X = scale(dcond.values) # Should always scale input variable
+            X = pd.DataFrame(X, index=dcond.index, columns=dcond.columns)
+
+        # Compute the projection as a simple matrix product
+        dpred = pd.DataFrame(np.dot(X, beta), index=X.index,
+                             columns=self.dep_vars)        
+        return(dpred)
+
+    def predict_plot(self, dcond=None):
+        """ Prediction plots with raw variables, loadings, etc. """
+
+        # Data
+        dpred = self.predict(dcond)
+        beta = self.loadings
+
+        # Plots
+        fig, axs = plt.subplots(1, 3)
+        ax1, ax2, ax3 = axs.ravel()
+
+        # Raw variables
+        for var in beta.index:
+            ax1.plot(self.df.index, self.df[var], label=var)
+            
+        ax1.legend(fontsize='xx-small', frameon=False)
+        ax1.set_title('Raw variables', y=1.02)
+
+        # Loadings
+        label_l = list(beta.index)
+        color_l = list('rgbkymc')
+        for idx, var in enumerate(label_l):
+            ax2.bar(var, beta[var], label=var, color=color_l[idx])
+        ax2.legend(fontsize='xx-small', frameon=False, handlelength=1,
+                   loc='upper right')
+        ax2.set_xticks([])
+        ax2.set_title('Loadings coefficients', y=1.02)
         
-        ## Need to select exactly the predictors which have been estimated
-        dp = dpred[self.top_vars].dropna()
 
-        ## Run the projection
-        dproj = pd.Series(self.fit.predict(dp).flatten(), index=dp.index)
+        # Output
+        ax3.plot(dpred.index, dpred, label='Prediction')
+        ax3.legend(fontsize='small', frameon=False)
+        ax3.set_title('Output', y=1.02)
 
-        ## Scaling pb: prediction and fit don't match in sample (they should) !
-        # Create the in-sample prediction
-        dproj_in = pd.Series(self.fit.predict(self.df[self.top_vars]).flatten(),
-                             index=self.df.index)
+        plt.subplots_adjust(left=0.1, right=0.9,  wspace=0.3)
         
-        # Adjust based on the in-sample projection !
-        mean_adj =  dproj_in.mean() - self.component.mean()
-        scale_adj = dproj_in.std()/self.component.std()
+        return(fig)
+                  
+###############################################################################
+#%% Example
+###############################################################################
+if __name__ == '__main__':    
+    from sklearn.datasets import make_regression     # Generate example data
+    X, y = make_regression(n_samples=200, n_features=3,noise=4,random_state=42)
+    df = pd.DataFrame(X, columns=['x1', 'x2', 'x3'])
+    df['y'] = y
+    cond_vector = df.tail(1) # Example of a conditioning vector
 
-        # Nicely adjusted ! 
-        dproj_mod = (dproj-mean_adj)/scale_adj
-        
-        return(dproj_mod)
+    # Fit the model
+    target = ['y']
+    var_l = ['x1', 'x2', 'x3']
+    pls_fit = PLS(target, var_l, df, num_vars='all')
+    pls_fit.predict().head(5)
+    # Should return:
+    #           y
+    # 0 -0.469897
+    # 1  1.523225
+    # 2  0.502270
+    # 3  0.236980
+    # 4 -0.007572
 
-    
+
+    # pls_fit.predict_plot()
+    # plt.show()
