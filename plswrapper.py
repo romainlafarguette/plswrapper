@@ -2,7 +2,7 @@
 """
 Run a PLS - Discriminant Analysis on a set of variables and target variables
 Romain Lafarguette, https://romainlafarguette.github.io/
-Time-stamp: "2021-11-03 20:31:12 RLafarguette"
+Time-stamp: "2021-11-03 20:41:11 RLafarguette"
 """
 
 ###############################################################################
@@ -184,14 +184,17 @@ class PLS(object):
         beta = self.loadings
 
         # Distinguish between in-sample and customized fit
-        if dcond==None: # The fit is done in-sample, using data input         
-            X = self.df[list(beta.index)]
-        else:
-            m = 'Conditioning frame should contain the predictors in columns'
-            assert all(x in dcond.columns for x in beta.index),m
+        if isinstance(dcond, pd.DataFrame): # If a dataframe has been fitted
+            dcond = dcond[list(beta.index)].copy()
+            msg = 'Conditioning frame should contain the predictors in columns'
+            assert all(x in dcond.columns for x in beta.index), msg
             X = scale(dcond.values) # Should always scale input variable
-            X = pd.DataFrame(X, index=dcond.index, columns=dcond.columns)
-
+            X = pd.DataFrame(X, index=dcond.index, columns=dcond.columns)            
+        elif dcond==None: # The fit is done in-sample, using data input         
+            X = self.df[list(beta.index)].copy()
+        else:
+            raise ValueError('dcond should be a dataframe or none')
+            
         # Compute the projection as a simple matrix product
         dpred = pd.DataFrame(np.dot(X, beta), index=X.index,
                              columns=self.dep_vars)        
