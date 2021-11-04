@@ -2,7 +2,7 @@
 """
 Run a PLS - Discriminant Analysis on a set of variables and target variables
 Romain Lafarguette, https://romainlafarguette.github.io/
-Time-stamp: "2021-11-03 20:04:58 RLafarguette"
+Time-stamp: "2021-11-03 20:26:35 RLafarguette"
 """
 
 ###############################################################################
@@ -17,6 +17,10 @@ import matplotlib.pyplot as plt
 # Method imports
 from sklearn.cross_decomposition import PLSRegression   ## PLS
 from sklearn.preprocessing import scale
+
+import warnings
+warnings.simplefilter("ignore", UserWarning)
+warnings.simplefilter("ignore", RuntimeWarning)
 
 ###############################################################################
 #%% PLS Discriminant Analysis Class Wrapper
@@ -204,16 +208,19 @@ class PLS(object):
         fig, axs = plt.subplots(1, 3)
         ax1, ax2, ax3 = axs.ravel()
 
+        style_l = ['-', '--', '-.', ':']*3
+        color_l = list('rgbkymc')*3
+        
         # Raw variables
-        for var in beta.index:
-            ax1.plot(self.df.index, self.df[var], label=var)
-            
-        ax1.legend(fontsize='xx-small', frameon=False)
+        for idx, var in enumerate(beta.index):
+            ax1.plot(self.df.index, self.df[var], label=var, lw=2,
+                     ls=style_l[idx], color=color_l[idx])
+        ax1.xaxis.set_tick_params(labelsize='xx-small')
+        ax1.legend(fontsize='xx-small', frameon=False, handlelength=1)
         ax1.set_title('Raw variables', y=1.02)
 
         # Loadings
         label_l = list(beta.index)
-        color_l = list('rgbkymc')
         for idx, var in enumerate(label_l):
             ax2.bar(var, beta[var], label=var, color=color_l[idx])
         ax2.legend(fontsize='xx-small', frameon=False, handlelength=1,
@@ -221,13 +228,13 @@ class PLS(object):
         ax2.set_xticks([])
         ax2.set_title('Loadings coefficients', y=1.02)
         
-
         # Output
-        ax3.plot(dpred.index, dpred, label='Prediction')
+        ax3.plot(dpred.index, dpred, label='Prediction', lw=2)
+        ax3.xaxis.set_tick_params(labelsize='xx-small')
         ax3.legend(fontsize='small', frameon=False)
         ax3.set_title('Output', y=1.02)
-
-        plt.subplots_adjust(left=0.1, right=0.9,  wspace=0.3)
+        
+        plt.subplots_adjust(left=0.05, right=0.95,  wspace=0.3)
         
         return(fig)
                   
